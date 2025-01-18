@@ -1,53 +1,61 @@
 import { Request, Response } from "express";
-import { prisma } from "../../../common/utils/globals";
+import { getClientEmail } from "../../../common/data-fetchers/global";
+import { prisma } from "../../../common/utils/db";
+import { getUserId, setCookie } from "../../../common/utils/globals";
 
 export const createTodo = async (req: Request, res: Response) => {
-  const { title, description, completed, clientId } = req.body;
-  if (!title || !clientId) {
+  const { title, description, completed } = req.body;
+  if (!title) {
     res.status(400).json({ error: "Title is required" });
   }
   try {
     const userId = getUserId(req);
+    const clientEmail = await getClientEmail(req.headers.authorization!);
     const newTodo = await prisma.todo.create({
       data: {
         title,
         description,
         completed,
         userId,
-        clientId,
+        clientEmail,
+      },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        completed: true,
+        userId: true,
+        createdAt: true,
       },
     });
+    setCookie(res, userId);
     res.status(200).json(newTodo);
-  } catch (error) {
-    console.log("error", error);
-    res.status(500).json({ error: "Error creating todo" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Internal server error" });
   }
 };
 
 export const getAllTodos = async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
+    const clientEmail = await getClientEmail(req.headers.authorization!);
+    console.log("user id", userId);
     const todos = await prisma.todo.findMany({
       where: {
         userId,
+        clientEmail,
+      },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        completed: true,
+        createdAt: true,
       },
     });
+    setCookie(res, userId);
     res.status(200).json(todos);
-  } catch (error) {
-    res.status(500).json({ error: "Error getting todos" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Internal server error" });
   }
-};
-
-const getUserId = (req: Request) => {
-  const temp = req.headers.cookie || "";
-  const cookies = temp.split(";");
-  let userId = "";
-  for (let i = 0; i < cookies.length; i++) {
-    const cookie = cookies[i];
-    const [key, value] = cookie.split("=");
-    if (key.trim() === "userId") {
-      userId = value;
-    }
-  }
-  return userId;
 };
