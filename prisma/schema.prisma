@@ -7,16 +7,31 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id    String @id @default(auto()) @map("_id") @db.ObjectId
-  name  String
-  email String @unique
+// Frontend Team Model
+model Client {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId     String   @unique
+  name         String
+  email        String   @unique
+  apiKey       String   @unique
+  previousKeys String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  todos        Todo[]
+
+  @@map("client")
 }
 
 model Todo {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   title       String
   description String?
-  done        Boolean  @default(false)
+  completed   Boolean  @default(false)
+  userId      String
+  clientId    String
+  updatedAt   DateTime @updatedAt
   createdAt   DateTime @default(now())
+  client      Client   @relation(fields: [clientId], references: [clientId])
+
+  @@map("todo")
 }
